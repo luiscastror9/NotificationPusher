@@ -71,6 +71,19 @@ class PushManager extends PushCollection
 
         return $this;
     }
+	 public function pushNotification()
+    {
+        foreach ($this as $push) {
+            $adapter = $push->getAdapter();
+            $adapter->setEnvironment($this->getEnvironment());
+
+            if ($adapter->pushNotification($push)) {
+                $push->pushed();
+            }
+        }
+
+        return $this;
+    }
 
     /**
      * Get feedback.
