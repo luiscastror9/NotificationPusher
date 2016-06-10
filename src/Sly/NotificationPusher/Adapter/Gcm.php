@@ -82,6 +82,31 @@ class Gcm extends BaseAdapter
         return $pushedDevices;
     }
 
+    public function pushNotification(PushInterface $push)
+    {
+        $client        = $this->getOpenedClient();
+        $pushedDevices = new DeviceCollection();
+        $tokens        = array_chunk($push->getDevices()->getTokens(), 100);
+
+        foreach ($tokens as $tokensRange) {
+            $notification = $this->getServiceMessageFromOrigin($tokensRange, $push->getMessage());
+
+            try {
+                $this->response = $client->send($notification);
+            } catch (ServiceRuntimeException $e) {
+                throw new PushException($e->getMessage());
+            }
+
+            if ((bool) $this->response->getSuccessCount()) {
+                foreach ($tokensRange as $token) {
+                    $pushedDevices->add($push->getDevices()->get($token));
+                }
+            }
+        }
+
+        return $pushedDevices;
+    }
+
     /**
      * Get opened client.
      *

@@ -86,6 +86,29 @@ class Apns extends BaseAdapter
         return $pushedDevices;
     }
 
+   public function pushNotification(PushInterface $push)
+    {
+        $client = $this->getOpenedServiceClient();
+
+        $pushedDevices = new DeviceCollection();
+
+        foreach ($push->getDevices() as $device) {
+            $message = $this->getServiceMessageFromOrigin($device, $push->getMessage());
+
+            try {
+                $this->response = $client->send($notification);
+            } catch (ServiceRuntimeException $e) {
+                throw new PushException($e->getMessage());
+            }
+
+            if (ServiceResponse::RESULT_OK === $this->response->getCode()) {
+                $pushedDevices->add($device);
+            }
+        }
+
+        return $pushedDevices;
+    }
+
     /**
      * Feedback.
      *
@@ -174,10 +197,7 @@ class Apns extends BaseAdapter
             $message->getOption('actionLocKey'),
             $message->getOption('locKey'),
             $message->getOption('locArgs'),
-            $message->getOption('launchImage'),
-            $message->getOption('title'),
-            $message->getOption('titleLocKey'),
-            $message->getOption('titleLocArgs')
+            $message->getOption('launchImage')
         );
         if ($actionLocKey = $message->getOption('actionLocKey')) {
             $alert->setActionLocKey($actionLocKey);
@@ -191,23 +211,12 @@ class Apns extends BaseAdapter
         if ($launchImage = $message->getOption('launchImage')) {
             $alert->setLaunchImage($launchImage);
         }
-        if ($title = $message->getOption('title')) {
-            $alert->setTitle($title);
-        }
-        if ($titleLocKey = $message->getOption('titleLocKey')) {
-            $alert->setTitleLocKey($titleLocKey);
-        }
-        if ($titleLocArgs = $message->getOption('titleLocArgs')) {
-            $alert->setTitleLocArgs($titleLocArgs);
-        }
 
         $serviceMessage = new ServiceMessage();
         $serviceMessage->setId(sha1($device->getToken().$message->getText()));
         $serviceMessage->setAlert($alert);
         $serviceMessage->setToken($device->getToken());
-        if (0 !== $badge) {
-            $serviceMessage->setBadge($badge);
-        }
+        $serviceMessage->setBadge($badge);
         $serviceMessage->setCustom($message->getOption('custom', array()));
 
         if (null !== $sound) {
